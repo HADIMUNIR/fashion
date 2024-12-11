@@ -120,83 +120,32 @@ class OrderController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'customer_name' => [
-                'required',
-                'string',
-                'max:255',
-                'min:1',
-                'regex:/^[\pL\s\-]+$/u'
-            ],
-            'product_name' => [
-                'required',
-                'string',
-                'exists:products,nama'
-            ],
-            'quantity' => [
-                'required',
-                'integer',
-                'min:1'
-            ],
-            'price' => [
-                'required',
-                'numeric',
-                'min:0'
-            ],
-            'total_price' => [
-                'required',
-                'numeric',
-                'min:0'
-            ],
-            'payment_status' => [
-                'required',
-                'in:paid,unpaid'
-            ]
-        ], [
-            'customer_name.required' => 'Nama pembeli wajib diisi',
-            'customer_name.string' => 'Nama pembeli harus berupa teks',
-            'customer_name.max' => 'Nama pembeli maksimal 255 karakter',
-            'customer_name.min' => 'Nama pembeli min 2 karakter',
-            'customer_name.regex' => 'Nama pembeli hanya boleh mengandung huruf, spasi, dan tanda hubung',
-            'product_name.required' => 'Nama produk wajib diisi',
-            'product_name.exists' => 'Produk yang dipilih tidak valid',
-            'quantity.required' => 'Jumlah wajib diisi',
-            'quantity.integer' => 'Jumlah harus berupa angka bulat',
-            'quantity.min' => 'Jumlah minimal 1',
-            'price.required' => 'Harga wajib diisi',
-            'price.numeric' => 'Harga harus berupa angka',
-            'price.min' => 'Harga tidak boleh negatif',
-            'total_price.required' => 'Total harga wajib diisi',
-            'total_price.numeric' => 'Total harga harus berupa angka',
-            'total_price.min' => 'Total harga tidak boleh negatif',
-            'payment_status.required' => 'Status pembayaran wajib diisi',
-            'payment_status.in' => 'Status pembayaran tidak valid'
-        ]);
-
         try {
             DB::beginTransaction();
-
+    
             $order = Order::findOrFail($id);
             $newProduct = Produk::where('nama', $request->product_name)->firstOrFail();
             $oldProduct = Produk::findOrFail($order->product_id);
-
+    
             // Kembalikan stok lama
             $oldProduct->update([
                 'stok' => $oldProduct->stok + $order->quantity
             ]);
-
+    
             // Cek stok baru
             if ($newProduct->stok < $request->quantity) {
                 DB::rollBack();
-                return back()->with('error', "Stok tidak mencukupi. Stok tersedia: {$newProduct->stok}")
-                           ->withInput();
+                return response()->json([
+                    'success' => false,
+                    'error' => "Stok tidak mencukupi. Stok tersedia: {$newProduct->stok}"
+                ], 422);
             }
-
+    
             // Kurangi stok baru
             $newProduct->update([
                 'stok' => $newProduct->stok - $request->quantity
             ]);
-
+    
             // Update order
             $order->update([
                 'customer_name' => $request->customer_name,
@@ -207,15 +156,20 @@ class OrderController extends Controller
                 'total_price' => $request->total_price,
                 'payment_status' => $request->payment_status
             ]);
-
+    
             DB::commit();
-            return redirect()->route('kasir.dashboard')
-                           ->with('success', 'Transaksi berhasil diupdate');
-
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaksi berhasil diupdate'
+            ]);
+    
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal mengupdate transaksi: ' . $e->getMessage())
-                        ->withInput();
+            return response()->json([
+                'success' => false,
+                'error' => 'Gagal mengupdate transaksi: ' . $e->getMessage()
+            ], 500);
         }
     }
 

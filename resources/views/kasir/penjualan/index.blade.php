@@ -1,5 +1,5 @@
 @extends('components.kasir-app')
-
+<meta name="csrf-token" content="{{ csrf_token() }}">
 @section('content')
 <div class="bg-zinc-900/80 rounded-lg p-6 border border-pink-500/20">
 <h1 class="text-2xl font-bold mb-6 neon-glow" style="color: rgb(234, 61, 61);">Transaksi Penjualan</h1>
@@ -118,24 +118,24 @@
                     </td>
                     <td class="px-6 py-4">{{ $order->created_at->format('d/m/Y H:i') }}</td>
                     <td class="px-6 py-4 text-center flex justify-center space-x-2">
-                        <button onclick="editOrder({{ $order->id }})" 
+                        <!-- <button onclick="editOrder({{ $order->id }})" 
                             class="btn-glow px-3 py-1 rounded inline-flex items-center">
                             <i class="fas fa-edit mr-2"></i> Edit
-                        </button>
+                        </button> -->
 
-                        <form action="{{ route('order.destroy', $order->id) }}" method="POST" class="inline">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" onclick="return confirm('Yakin ingin menghapus transaksi ini?')"
-                                class="btn-glow bg-red-500/20 hover:bg-red-500/30 px-3 py-1 rounded inline-flex items-center">
-                                <i class="fas fa-trash mr-2"></i> Hapus
-                            </button>
-                        </form>
+                        <form action="{{ route('order.destroy', $order->id) }}" method="POST" class="inline-block">
+    @csrf
+    @method('DELETE')
+    <button type="submit" onclick="return confirm('Yakin ingin menghapus transaksi ini?')"
+        class="btn-glow bg-red-500/60 hover:bg-red-500/100 px-3 py-1.5 rounded inline-flex items-center">
+        <i class="fas fa-trash mr-2"></i> Hapus
+    </button>
+</form>
 
-                        <a href="{{ route('order.print', $order->id) }}" target="_blank"
-                            class="btn-glow px-3 py-1 rounded inline-flex items-center">
-                            <i class="fas fa-print mr-2"></i> Cetak
-                        </a>
+<a href="{{ route('order.print', $order->id) }}" target="_blank"
+    class="btn-glow bg-blue-500/60 hover:bg-blue-500/100 px-3 py-1.5 rounded inline-flex items-center">
+    <i class="fas fa-print mr-2"></i> Cetak
+</a>
                     </td>
                 </tr>
                 @endforeach
@@ -144,21 +144,23 @@
     </div>
 </div>
 
+
 <!-- Modal Edit -->
 <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-<div class="bg-zinc-900 p-6 rounded-lg w-full max-w-2xl border border-pink-500/20">
-    <h2 class="text-xl font-bold text-pink-400 mb-4">Edit Transaksi</h2>
-    
-    <form id="editForm" method="POST" class="space-y-4">
-        @csrf
-        @method('PUT')
+    <div class="bg-zinc-900 p-6 rounded-lg w-full max-w-2xl border border-pink-500/20">
+        <h2 class="text-xl font-bold text-pink-400 mb-4">Edit Transaksi</h2>
         
-        <div class="grid grid-cols-2 gap-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">Nama Pembeli</label>
-                <input type="text" name="customer_name" id="edit_customer_name" required
-                    class="w-full bg-zinc-900/50 border border-pink-500/20 rounded-lg px-4 py-2 text-gray-100">
-            </div>
+        <form id="editForm" method="POST" class="space-y-4">
+            @csrf
+            <input type="hidden" name="_method" value="PUT">
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Nama Pembeli</label>
+                    <input type="text" name="customer_name" id="edit_customer_name" required
+                        class="w-full bg-zinc-900/50 border border-pink-500/20 rounded-lg px-4 py-2 text-gray-100">
+                </div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Produk</label>
                     <select name="product_name" id="edit_product_id" required
@@ -389,10 +391,12 @@ document.getElementById('editModal').addEventListener('click', function(e) {
 
 
 // Edit Order Functions
+// Fungsi untuk membuka modal edit
 function editOrder(orderId) {
     fetch(`/order/${orderId}/edit`)
         .then(response => response.json())
         .then(data => {
+            // Isi form dengan data yang ada
             document.getElementById('edit_customer_name').value = data.customer_name;
             document.getElementById('edit_product_id').value = data.product_name;
             document.getElementById('edit_quantity').value = data.quantity;
@@ -400,11 +404,13 @@ function editOrder(orderId) {
             document.getElementById('edit_total_price').value = data.total_price;
             document.getElementById('edit_payment_status').value = data.payment_status;
             
-            document.getElementById('editForm').action = `/order/${orderId}`;
+            // Set action URL form
+            const editForm = document.getElementById('editForm');
+            editForm.action = `/order/${orderId}`;
+            
+            // Tampilkan modal
             document.getElementById('editModal').classList.remove('hidden');
             document.getElementById('editModal').classList.add('flex');
-
-            calculateEditTotal();
         })
         .catch(error => {
             console.error('Error:', error);
@@ -412,62 +418,73 @@ function editOrder(orderId) {
         });
 }
 
+// Fungsi untuk handle submit form edit
+document.getElementById('editForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    // Disable tombol submit
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            showNotification(data.message, 'success');
+            closeEditModal();
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showNotification(data.error || 'Gagal memperbarui data', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Terjadi kesalahan sistem', 'error');
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+    });
+});
+
+// Fungsi untuk menampilkan notifikasi
+function showNotification(message, type = 'error') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-4 rounded-lg border shadow-lg z-50 animate-fade-in ${
+        type === 'error' 
+            ? 'bg-red-500/20 text-red-400 border-red-500/20' 
+            : type === 'success'
+            ? 'bg-green-500/20 text-green-400 border-green-500/20'
+            : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/20'
+    }`;
+    
+    notification.innerHTML = `
+        <div class="flex items-center gap-2">
+            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('animate-fade-out');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Fungsi untuk menutup modal
 function closeEditModal() {
     document.getElementById('editModal').classList.remove('flex');
     document.getElementById('editModal').classList.add('hidden');
 }
-
-// Edit form event listeners
-const editProductSelect = document.getElementById('edit_product_id');
-const editQuantityInput = document.getElementById('edit_quantity');
-const editPriceInput = document.getElementById('edit_price');
-const editTotalInput = document.getElementById('edit_total_price');
-const editStockWarning = document.getElementById('edit_stock_warning');
-
-editProductSelect.addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const price = selectedOption.dataset.price;
-    const stock = parseInt(selectedOption.dataset.stock);
-    
-    editPriceInput.value = price;
-    editQuantityInput.value = '';
-    editTotalInput.value = '';
-    editStockWarning.classList.add('hidden');
-    
-    calculateEditTotal();
-});
-
-editQuantityInput.addEventListener('input', function() {
-    const selectedOption = editProductSelect.options[editProductSelect.selectedIndex];
-    const stock = parseInt(selectedOption.dataset.stock);
-    const quantity = parseInt(this.value) || 0;
-
-    if (quantity > stock) {
-        editStockWarning.textContent = `Stok tidak mencukupi! Maksimal: ${stock}`;
-        editStockWarning.classList.remove('hidden');
-        this.value = stock;
-    } else if (quantity <= 0) {
-        editStockWarning.textContent = 'Jumlah minimal adalah 1';
-        editStockWarning.classList.remove('hidden');
-    } else {
-        editStockWarning.classList.add('hidden');
-    }
-    
-    calculateEditTotal();
-});
-
-function calculateEditTotal() {
-    const price = parseFloat(editPriceInput.value) || 0;
-    const quantity = parseInt(editQuantityInput.value) || 0;
-    editTotalInput.value = price * quantity;
-}
-
-// Close modal when clicking outside
-document.getElementById('editModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeEditModal();
-    }
-});
 
 // Add styles for animations
 const style = document.createElement('style');

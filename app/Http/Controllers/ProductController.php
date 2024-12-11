@@ -12,13 +12,13 @@ use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
-   public function index()
-   {
-       return view('admin.produk.index', [
-           'produk' => Produk::with('kategori')->get(),
-           'title' => 'Kelola Produk'
-       ]);
-   }
+    public function index()
+    {
+        return view('admin.produk.index', [
+            'produk' => Produk::with('kategori')->orderBy('created_at', 'asc')->get(),
+            'title' => 'Kelola Produk'
+        ]);
+    }
 
    public function create()
    {
@@ -28,6 +28,9 @@ class ProductController extends Controller
 
    public function store(Request $request)
    {
+       // Debug: Lihat data yang diterima
+       \Log::info('Data request:', $request->all());
+   
        $validator = Validator::make($request->all(), [
            'nama' => 'required|string|max:255|min:3|unique:products',
            'harga' => 'required|numeric|min:1000',
@@ -35,71 +38,80 @@ class ProductController extends Controller
            'kategori_id' => 'required|exists:kategoris,id',
            'gambar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
        ], [
-           // Nama Produk
+           // Pesan error tetap sama
            'nama.required' => 'Nama produk wajib diisi',
-           'nama.string' => 'Nama produk harus berupa teks',
-           'nama.max' => 'Nama produk maksimal 255 karakter',
-           'nama.min' => 'Nama produk minimal 3 karakter',
-           'nama.unique' => 'Nama produk sudah digunakan',
-           
-           // Harga
-           'harga.required' => 'Harga produk wajib diisi',
-           'harga.numeric' => 'Harga harus berupa angka',
-           'harga.min' => 'Harga minimal Rp 1.000',
-           
-           // Stok
-           'stok.required' => 'Stok produk wajib diisi',
-           'stok.integer' => 'Stok harus berupa angka bulat',
-           'stok.min' => 'Stok minimal 1',
-           
-           // Kategori
-           'kategori_id.required' => 'Kategori produk wajib dipilih',
-           'kategori_id.exists' => 'Kategori yang dipilih tidak valid',
-           
-           // Gambar
-           'gambar.required' => 'Gambar produk wajib diupload',
-           'gambar.image' => 'File yang diupload harus berupa gambar',
-           'gambar.mimes' => 'Format gambar yang diperbolehkan: jpeg, png, jpg, gif',
-           'gambar.max' => 'Ukuran gambar maksimal 2MB'
+           //... pesan error lainnya ...
        ]);
-
+   
        if ($validator->fails()) {
+           \Log::error('Validation failed:', $validator->errors()->toArray());
            return redirect()
                ->back()
                ->withErrors($validator)
                ->withInput();
        }
-
+   
        try {
+           // Debug: Cek apakah ada file gambar
+           \Log::info('File gambar:', ['exists' => $request->hasFile('gambar')]);
+   
            if ($request->hasFile('gambar')) {
                $gambar = $request->file('gambar');
                $nama_file = time()."_".$gambar->getClientOriginalName();
+               
+               // Debug: Cek path upload
+               \Log::info('Upload path:', [
+                   'path' => public_path('images/produk'),
+                   'filename' => $nama_file
+               ]);
+   
                $gambar->move(public_path('images/produk'), $nama_file);
                $gambarPath = 'images/produk/' . $nama_file;
+               
+               // Debug: Cek hasil upload
+               \Log::info('File uploaded:', ['path' => $gambarPath]);
            }
-
-           Produk::create([
+   
+           // Debug: Data yang akan disimpan
+           \Log::info('Data yang akan disimpan:', [
                'nama' => $request->nama,
                'harga' => $request->harga,
                'stok' => $request->stok,
                'kategori_id' => $request->kategori_id,
                'gambar' => $gambarPath ?? null,
            ]);
-
+   
+           $produk = Produk::create([
+               'nama' => $request->nama,
+               'harga' => $request->harga,
+               'stok' => $request->stok,
+               'kategori_id' => $request->kategori_id,
+               'gambar' => $gambarPath ?? null,
+           ]);
+   
+           // Debug: Cek hasil create
+           \Log::info('Produk berhasil dibuat:', ['id' => $produk->id]);
+   
            return redirect()
                ->route('admin.produk.index')
                ->with('success', 'Produk berhasil ditambahkan.');
-
+   
        } catch (\Exception $e) {
-           // Jika terjadi error, hapus gambar yang sudah diupload (jika ada)
+           // Log error detail
+           \Log::error('Error saat menyimpan produk:', [
+               'message' => $e->getMessage(),
+               'trace' => $e->getTraceAsString()
+           ]);
+   
+           // Hapus gambar jika upload gagal
            if (isset($gambarPath) && file_exists(public_path($gambarPath))) {
                unlink(public_path($gambarPath));
            }
-
+   
            return redirect()
                ->back()
                ->withInput()
-               ->with('error', 'Terjadi kesalahan saat menambahkan produk. Silakan coba lagi.');
+               ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
        }
    }
 

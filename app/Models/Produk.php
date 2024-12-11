@@ -8,8 +8,7 @@ class Produk extends Model
 {
     protected $table = 'products';
     
-    protected $fillable = [
-        'kode_produk',
+    Protected $fillable = [
         'nama',
         'harga',
         'stok',

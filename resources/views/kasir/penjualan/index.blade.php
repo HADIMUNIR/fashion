@@ -102,44 +102,43 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-pink-500/20">
-                @foreach($orders as $order)
-                <tr class="hover:bg-zinc-800/40 transition-colors">
-                    <td class="px-6 py-4 nomor"></td> <!-- Ubah bagian ini -->
-                    <td class="px-6 py-4">{{ $order->customer_name }}</td>
-                    <td class="px-6 py-4">{{ $order->product_name }}</td>
-                    <td class="px-6 py-4">{{ $order->quantity }}</td>
-                    <td class="px-6 py-4">Rp {{ number_format($order->price, 0, ',', '.') }}</td>
-                    <td class="px-6 py-4">Rp {{ number_format($order->total_price, 0, ',', '.') }}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded-full text-xs 
-                            {{ $order->payment_status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400' }}">
-                            {{ $order->payment_status }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4">{{ $order->created_at->format('d/m/Y H:i') }}</td>
-                    <td class="px-6 py-4 text-center flex justify-center space-x-2">
-                        <!-- <button onclick="editOrder({{ $order->id }})" 
-                            class="btn-glow px-3 py-1 rounded inline-flex items-center">
-                            <i class="fas fa-edit mr-2"></i> Edit
-                        </button> -->
+        @forelse($orders as $index => $order)
+        <tr class="hover:bg-zinc-800/40 transition-colors">
+            <td class="px-6 py-4">{{ $index + 1 }}</td>
+            <td class="px-6 py-4">{{ $order->customer_name }}</td>
+            <td class="px-6 py-4">{{ $order->product_name }}</td>
+            <td class="px-6 py-4">{{ $order->quantity }}</td>
+            <td class="px-6 py-4">Rp {{ number_format($order->price, 0, ',', '.') }}</td>
+            <td class="px-6 py-4">Rp {{ number_format($order->total_price, 0, ',', '.') }}</td>
+            <td class="px-6 py-4">
+                <span class="px-2 py-1 rounded-full text-xs 
+                    {{ $order->payment_status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400' }}">
+                    {{ $order->payment_status }}
+                </span>
+            </td>
+            <td class="px-6 py-4">{{ $order->created_at->format('d/m/Y H:i') }}</td>
+            <td class="px-6 py-4 text-center flex justify-center space-x-2">
+                <form action="{{ route('order.destroy', $order->id) }}" method="POST" class="inline-block">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" onclick="return confirm('Yakin ingin menghapus transaksi ini?')"
+                        class="btn-glow bg-red-500/60 hover:bg-red-500/100 px-3 py-1.5 rounded inline-flex items-center">
+                        <i class="fas fa-trash mr-2"></i> Hapus
+                    </button>
+                </form>
 
-                        <form action="{{ route('order.destroy', $order->id) }}" method="POST" class="inline-block">
-    @csrf
-    @method('DELETE')
-    <button type="submit" onclick="return confirm('Yakin ingin menghapus transaksi ini?')"
-        class="btn-glow bg-red-500/60 hover:bg-red-500/100 px-3 py-1.5 rounded inline-flex items-center">
-        <i class="fas fa-trash mr-2"></i> Hapus
-    </button>
-</form>
-
-<a href="{{ route('order.print', $order->id) }}" target="_blank"
-    class="btn-glow bg-blue-500/60 hover:bg-blue-500/100 px-3 py-1.5 rounded inline-flex items-center">
-    <i class="fas fa-print mr-2"></i> Cetak
-</a>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
+                <a href="{{ route('order.print', $order->id) }}" target="_blank"
+                    class="btn-glow bg-blue-500/60 hover:bg-blue-500/100 px-3 py-1.5 rounded inline-flex items-center">
+                    <i class="fas fa-print mr-2"></i> Cetak
+                </a>
+            </td>
+        </tr>
+        @empty
+        <tr>
+            <td colspan="9" class="px-6 py-4 text-center text-gray-500">Tidak ada transaksi</td>
+        </tr>
+        @endforelse
+    </tbody>
         </table>
     </div>
 </div>

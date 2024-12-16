@@ -14,7 +14,8 @@ class OrderController extends Controller
     {
         try {
             $products = Produk::where('stok', '>', 0)->get();
-            $orders = Order::with('produk')->latest()->take(10)->get();
+            // Mengambil semua data transaksi dan mengurutkannya dari yang terbaru
+            $orders = Order::with('produk')->latest()->get();
             return view('kasir.penjualan.index', compact('products', 'orders'));
         } catch (\Exception $e) {
             return back()->with('error', 'Terjadi kesalahan saat memuat data');
